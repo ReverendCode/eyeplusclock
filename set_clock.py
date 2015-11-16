@@ -1,5 +1,4 @@
-__author__ = 'ReverendCode' # I suppose this is because I have this project checked into bitbucket, where this is my username?
-#comments in python use the pound thingy
+__author__ = 'ReverendCode'
 
 from tkinter import *
 from sound import Sound
@@ -94,78 +93,9 @@ class SetUp: #Prepare the canvas
         self.hourIndex = 0 # 0-23
         self.minuteIndex = 0 # 0-59
         self.selectionPosition = 0 # 0-3
-        self.updateSelectionMenu()
 
-
-    def selectMove(self, newPosition): # New position should be one of -1, 0, 1
-        if self.menuIndex == 0: # Load the "Days" menu options
-            self.dayIndex += newPosition
-            # self.displayDays()
-        elif self.menuIndex == 1: # Load the hours Menu options
-            self.hourIndex += newPosition
-            # self.displayHours()
-        elif self.menuIndex == 2: # Load the minutes Menu options
-            self.minuteIndex += newPosition
-            # self.displayMinutes()
-        self.setSelection(newPosition)
-
-    def setSelection(self, direction):
-        tops = [6,23,59]
-        menus = [self.dayIndex,self.hourIndex,self.minuteIndex]
-
-
-        if self.selectionActive == True:
-            if tops[self.menuIndex] == menus[self.menuIndex]:
-                self.varLabels[3].configure(state='active')
-
-
-    def displayDays(self):
-        if self.dayIndex < 3:
-            i = 0
-            for block in self.listofVars:
-                block.set(self.days[i])
-                i += 1
-        elif self.dayIndex >= 6:
-            self.dayIndex = 6
-            i = self.dayIndex - 3
-            for block in self.listofVars:
-                block.set(self.days[i])
-                i += 1
-        else:
-            i = self.dayIndex - 2
-            for block in self.listofVars:
-                block.set(self.days[i])
-                i += 1
-
-
-    def updateSelectionMenu(self):
-        # change the selection menu based on the current menuIndex
-        displayMin = 0
-        if self.menuIndex == 0: #Set to days
-            self.headingVar.set("Days Menu")
-            # fDay = self.setFirst(self.dayIndex,6)
-            self.displayDays()
-
-        elif self.menuIndex == 1:
-            self.headingVar.set("Hours Menu")
-            displayMin = self.setFirst(self.hourIndex, 23)
-            for words in self.listofVars:
-                displayMin+=1
-                words.set(displayMin)
-
-        else:
-            self.headingVar.set("Minutes Menu")
-            displayMin = self.setFirst(self.minuteIndex, 59)
-            for words in self.listofVars:
-                displayMin+=1
-                words.set(displayMin)
-        # self.selectMove(0)
-
-    def  makeStaticLabel(self,frame, words): # Generate a static label
-        return Label(frame, text=words, relief=RIDGE, width=18, height=1)
-
-    def makeVarLabel(self, frame, variable): # Generate a label with text attached to variable
-        return Label(frame, textvariable=variable, relief=SUNKEN, width=18, height=2)
+        self.positions = [self.dayIndex, self.hourIndex, self.minuteIndex]
+        self.maximums = [6,23,59]
 
     def menuMove(self, direction):
         if direction == "right":
@@ -180,8 +110,109 @@ class SetUp: #Prepare the canvas
             self.menu[self.menuIndex].configure(state='active')
 
         self.menuSounds[self.menuIndex].play()
-        self.updateSelectionMenu()
 
+    def selectActive(self, current, max, left):
+        # This should return the location of the label to be highlighted
+        if current == max:
+            return 3
+        if current == 0:
+            return 0
+        if current == 1:
+            return 1
+        if current == max-1:
+            return 2
+        if left:
+            return 1
+        else:
+            return 2
+
+    def constructSelections(self, position, current, menu):
+        # This should set the text in the lower menu to the correct values, based on the position in the menu
+        start = current-position
+        if menu == 0: # You are in the 'Days' menu
+            for var in self.listofVars:
+                var.set(self.days[start])
+                start += 1
+        elif menu == 1: # This is hours
+            for var in self.listofVars:
+                if start < 11:
+                    start +=1
+                    var.set(str(start) + "AM")
+                elif start >= 11 & start < 23:
+                    start +=1
+                    var.set(str(start-12) + "PM")
+
+                elif start > 23:
+                    start = 1
+                    var.set(start + "AM")
+
+        else:  # This should be minutes
+            for var in self.listofVars:
+                if start > 59:
+                    start = 0
+                var.set(start)
+                start +=1
+
+    def activate(self,position):
+        self.clearSelection()
+        if position == 0:
+            self.labelLL.configure(state='active')
+        elif position == 1:
+            self.labelL.configure(state='active')
+        elif position == 2:
+            self.labelR.configure(state='active')
+        else:
+            self.labelRR.configure(state='active')
+
+    def rightPress(self, event):
+        if self.selectionActive == False:
+            self.menuMove("right")
+            self.constructSelections(self.selectionPosition, self.positions[self.menuIndex], self.menuIndex)
+        else:
+            maxx = self.maximums[self.menuIndex]
+            self.positions[self.menuIndex] += 1
+            self.positions[self.menuIndex] %= maxx+1
+            posit = self.positions[self.menuIndex]
+            print(str(posit)+" is the correct position")
+            self.selectionPosition = self.selectActive(posit, maxx, False)
+            print(str(self.selectionPosition)+"is the location of the selected position")
+            self.constructSelections(self.selectionPosition, posit,self.menuIndex)
+            self.activate(self.selectionPosition)
+
+
+
+    def leftPress(self, event):
+        if self.selectionActive == False:
+            self.menuMove("left")
+            self.constructSelections(self.selectionPosition,self.positions[self.menuIndex],self.menuIndex)
+        else:
+            maxx = self.maximums[self.menuIndex]
+            self.positions[self.menuIndex] -= 1
+            self.positions[self.menuIndex] %= maxx+1
+            posit = self.positions[self.menuIndex]
+            self.selectionPosition = self.selectActive(posit, maxx,True)
+            self.constructSelections(self.selectionPosition, posit,self.menuIndex)
+            self.activate(self.selectionPosition)
+
+
+    def selectPress(self, event):
+        if self.selectionActive == False:
+            self.setChildren('disabled',self.menuFrame)
+            self.setChildren('normal',self.selectionFrame)
+            self.selectionPosition = self.selectActive(self.positions[self.menuIndex],self.maximums[self.menuIndex],False)
+            self.constructSelections(self.selectionPosition,self.positions[self.menuIndex],self.menuIndex)
+            self.activate(self.selectionPosition)
+            self.selectionActive = True
+        else:
+            self.setChildren('normal', self.menuFrame)
+            self.setChildren('disabled',self.selectionFrame)
+            self.selectionActive = False
+
+    def setChildren(self, state, frame):
+        for child in frame.winfo_children():
+            child.configure(state=state)
+
+    # Some basic helper functions live here.
     def clearSelection(self):
         for child in self.selectionFrame.winfo_children():
             child.configure(state='normal')
@@ -190,34 +221,12 @@ class SetUp: #Prepare the canvas
         for child in self.menuFrame.winfo_children():
             child.configure(state='normal')
 
-    def leftPress(self, event):
-        if self.selectionActive == False:
-            self.menuMove("left")
-        else:
-             self.selectMove(-1)
 
-    def rightPress(self, event):
-        if self.selectionActive == False:
-            self.menuMove("right")
-        else:
-             self.selectMove(1)
-    def selectPress(self, event):
-        if self.selectionActive == False: # enter the currently selected menu
-            for child in self.menuFrame.winfo_children():
-                child.configure(state='disabled')
-            for child in self.selectionFrame.winfo_children():
-                child.configure(state='normal')
-            self.selectionActive = True
-            tops = [6,23,59]
-            self.selectionPosition = self.setActive()
-        else:
-            for child in self.menuFrame.winfo_children():
-                child.configure(state='normal')
-            for child in self.selectionFrame.winfo_children():
-                child.configure(state='disable')
-            self.menu[self.menuIndex].configure(state='active')
-            self.selectionActive = False
+    def  makeStaticLabel(self,frame, words): # Generate a static label
+        return Label(frame, text=words, relief=RIDGE, width=18, height=1)
 
+    def makeVarLabel(self, frame, variable): # Generate a label with text attached to variable
+        return Label(frame, textvariable=variable, relief=SUNKEN, width=18, height=2)
 
 
 
