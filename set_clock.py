@@ -51,7 +51,22 @@ class SetUp: #Prepare the canvas
             Sound(MENUS + "Set_hour_f.wav"),
             Sound(MENUS + "Set_minutes_f.wav")
         ]
-
+        self.daySounds = []
+        self.loadSounds("./sounds/days_of_week/", self.daySounds)
+        self.hourSounds = []
+        self.loadSounds("./sounds/hours_am_pm/hours_am/", self.hourSounds)
+        self.loadSounds("./sounds/hours_am_pm/hours_pm/", self.hourSounds)
+        self.minuteSounds = []
+        self.loadSounds("./sounds/minutes_0_59/", self.minuteSounds)
+        self.soundlists = [self.daySounds, self.hourSounds, self.minuteSounds]
+        # With deep appreciation to Roger for throwing together these sound files, it seems tedious
+        self.enteringDays = []
+        self.loadSounds("./sounds/edays/",self.enteringDays)
+        self.enteringHours = []
+        self.loadSounds("./sounds/ehours/am/",self.enteringHours)
+        self.loadSounds("./sounds/ehours/pm/",self.enteringHours)
+        self.enteringMins = []
+        self.loadSounds("./sounds/emins/",self.enteringMins)
 
         # Create variables to plug into the selection labels
         # heading, left left, left, right, right right
@@ -129,31 +144,34 @@ class SetUp: #Prepare the canvas
     def constructSelections(self, position, current, menu):
         # This should set the text in the lower menu to the correct values, based on the position in the menu
         start = current-position
+        if start < 0:
+            start = 0
         if menu == 0: # You are in the 'Days' menu
             for var in self.listofVars:
                 var.set(self.days[start])
                 start += 1
         elif menu == 1: # This is hours
             for var in self.listofVars:
-                if start < 11:
+                if start < 12:
                     start +=1
                     var.set(str(start) + "AM")
-                elif start >= 11 & start < 23:
+                elif start >= 12 & start < 23:
                     start +=1
                     var.set(str(start-12) + "PM")
 
                 elif start > 23:
                     start = 1
-                    var.set(start + "AM")
+                    var.set(str(start) + "AM")
 
         else:  # This should be minutes
             for var in self.listofVars:
                 if start > 59:
                     start = 0
                 var.set(start)
-                start +=1
+                start +=5
 
     def activate(self,position):
+        #  highlights the currently selected label
         self.clearSelection()
         if position == 0:
             self.labelLL.configure(state='active')
@@ -165,37 +183,53 @@ class SetUp: #Prepare the canvas
             self.labelRR.configure(state='active')
 
     def rightPress(self, event):
+        print("Right move")
         if self.selectionActive == False:
             self.menuMove("right")
             self.constructSelections(self.selectionPosition, self.positions[self.menuIndex], self.menuIndex)
         else:
             maxx = self.maximums[self.menuIndex]
-            self.positions[self.menuIndex] += 1
+            if self.menuIndex != 2:
+                self.positions[self.menuIndex] += 1
+            else:
+                self.positions[self.menuIndex] += 5
             self.positions[self.menuIndex] %= maxx+1
             posit = self.positions[self.menuIndex]
-            print(str(posit)+" is the correct position")
             self.selectionPosition = self.selectActive(posit, maxx, False)
-            print(str(self.selectionPosition)+"is the location of the selected position")
             self.constructSelections(self.selectionPosition, posit,self.menuIndex)
             self.activate(self.selectionPosition)
+            soundList = self.soundlists[self.menuIndex]
+            soundList[posit].play()
 
+    def loadSounds(self, path, choice): # Load sounds at path, into choice
+        soundList = choice
 
+        for file in os.listdir(path):
+            if file.endswith(".wav"):
+                soundList.insert(len(soundList), Sound(path + file))
 
     def leftPress(self, event):
+        print("Left move")
         if self.selectionActive == False:
             self.menuMove("left")
             self.constructSelections(self.selectionPosition,self.positions[self.menuIndex],self.menuIndex)
         else:
             maxx = self.maximums[self.menuIndex]
-            self.positions[self.menuIndex] -= 1
+            if self.menuIndex != 2: #not in minutes
+                self.positions[self.menuIndex] -= 1
+            else:
+                self.positions[self.menuIndex] -= 5
             self.positions[self.menuIndex] %= maxx+1
+
             posit = self.positions[self.menuIndex]
             self.selectionPosition = self.selectActive(posit, maxx,True)
             self.constructSelections(self.selectionPosition, posit,self.menuIndex)
             self.activate(self.selectionPosition)
-
+            soundList = self.soundlists[self.menuIndex]
+            soundList[posit].play()
 
     def selectPress(self, event):
+        print("Selection made")
         if self.selectionActive == False:
             self.setChildren('disabled',self.menuFrame)
             self.setChildren('normal',self.selectionFrame)
@@ -203,10 +237,23 @@ class SetUp: #Prepare the canvas
             self.constructSelections(self.selectionPosition,self.positions[self.menuIndex],self.menuIndex)
             self.activate(self.selectionPosition)
             self.selectionActive = True
+            # soundlist = self.soundlists[self.menuIndex]
+            # sound = soundlist[self.positions[self.menuIndex]]
+            self.menuSounds[self.menuIndex].play()
+            self.currentconfirm(self.menuIndex)
+
+
         else:
             self.setChildren('normal', self.menuFrame)
             self.setChildren('disabled',self.selectionFrame)
+            self.menu[self.menuIndex].configure(state='active')
             self.selectionActive = False
+            soundlist = self.soundlists[self.menuIndex]
+            sound = soundlist[self.positions[self.menuIndex]]
+            sound.play()
+    def menuConfirm(self, menu):
+        print("entering menu")
+        menu.play()
 
     def setChildren(self, state, frame):
         for child in frame.winfo_children():
@@ -221,8 +268,7 @@ class SetUp: #Prepare the canvas
         for child in self.menuFrame.winfo_children():
             child.configure(state='normal')
 
-
-    def  makeStaticLabel(self,frame, words): # Generate a static label
+    def makeStaticLabel(self,frame, words): #  Generate a static label
         return Label(frame, text=words, relief=RIDGE, width=18, height=1)
 
     def makeVarLabel(self, frame, variable): # Generate a label with text attached to variable
